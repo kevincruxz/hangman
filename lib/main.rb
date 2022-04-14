@@ -22,7 +22,9 @@ end
 
 def display_game_state()
     draw_stickman()
-    puts "\n\n\n#{$current_word.join}"
+    announcer = "\n\n\n#{$current_word.join(' ')}"
+    announcer += "  Incorrect letters used: #{$used_letters.join(' ')}" if $used_letters.length >= 1
+    puts announcer
 end
 
 def draw_stickman()
@@ -37,17 +39,22 @@ def draw_stickman()
 end
 
 def check_if_correct(user_elec)
-    # loop through the word checking each letter if it is equal to the letter user provided
-    # if it is equal then in that position of current_guessed replace the _ with the letter
-    # continue through the word
     correct = false
     $goal_word.split('').each_with_index do |letter, i|
-        if letter == user_elec
-            $current_word[i] = " #{letter.upcase} "
-            correct = true
+        if letter == user_elec.downcase
+            if $current_word[i] == letter.upcase
+                puts "\nYou alredy guessed that letter!"
+                return
+            else
+                $current_word[i] = letter.upcase
+                correct = true
+            end
         end
     end
-    $current_misses += 1 if correct == false
+    if correct == false
+        $current_misses += 1
+        $used_letters.push(user_elec) unless $used_letters.any?(user_elec)
+    end
 end
 
 def ask_letter
@@ -67,6 +74,7 @@ def game
         letter = ask_letter()
         check_if_correct(letter)
         if $current_word.join.downcase == $goal_word
+            display_game_state()
             puts "Congrats you guessed it!"
             break
         elsif $current_misses == 6
@@ -79,18 +87,12 @@ def game
 end
 
 $goal_word = select_word()
-$current_word = Array.new($goal_word.length, ' _ ')
+$current_word = Array.new($goal_word.length, '_')
 $current_misses = 0
+$used_letters = []
 game()
 
 
 # At the beginning display a select menu which contains load game, new game and some instructions
 # if the user selects load game, check inside the saves dir for any saved games
 # if there are any, the display them and ask for what file you want to load
-
-# if it is a new game then load the file dictionary select a random word
-# if the word is higher= than 5 an lower= than 12 then select that word and break
-# if not repeat the process
-
-# can make the save process in a class with objects
-# make the stickman in an array and draw the stickman form it
