@@ -1,12 +1,20 @@
+require 'csv'
+
 class Save
-    def initialize(name, stickman, current_word)
-        @name = name
-        @stickman = stickman
-        @word = current_word
+    def initialize(goal_word, current_word, current_misses, used_letters)
+        @goal_word = goal_word
+        @current_word = current_word
+        @current_misses = current_misses
+        @used_letters = used_letters
+        serialize
     end
 
-    def method_name
-        
+    def serialize
+        print "How you want to name your save? : "
+        file_name = gets.chomp
+        File.open("saves/#{file_name}.csv", 'w') do |file|
+            file.puts "goal_word,current_word,current_misses,used_letters\n#{@goal_word},#{@current_word.join},#{@current_misses},#{@used_letters.join}"
+        end
     end
 end
 
@@ -57,10 +65,11 @@ def check_if_correct(user_elec)
     end
 end
 
-def ask_letter
-    print 'Write your next guess (a-z): '
+def ask_letter(add)
+    print "Write your next guess#{add}: "
     letter = gets.chomp
-    while letter.length != 1 || letter.downcase.ord < 97 ||   letter.downcase.ord > 122
+    return letter if letter == 'save'
+    while letter.length != 1 || letter.downcase.ord < 97 || letter.downcase.ord > 122
         puts "Wrong input, try again."
         print 'Write your next guess (a-z): '
         letter = gets.chomp
@@ -69,13 +78,18 @@ def ask_letter
 end
 
 def game
+    add = ''
     while true
         display_game_state()
-        letter = ask_letter()
-        check_if_correct(letter)
+        letter = ask_letter(add)
+        if letter == 'save'
+            Save.new($goal_word, $current_word, $current_misses, $used_letters)
+        else
+            check_if_correct(letter)
+        end
         if $current_word.join.downcase == $goal_word
             display_game_state()
-            puts "Congrats you guessed it!"
+            puts 'Congrats you guessed it!'
             break
         elsif $current_misses == 6
             draw_stickman()
@@ -83,16 +97,63 @@ def game
             puts "The word was \"#{$goal_word.upcase}\""
             break
         end
+        add = ' (or type save to save your current game)'
     end
+end
+
+def search_file
+    exists = false
+    until exists
+        print 'Write the name of the file you want to load: '
+        filename = gets.chomp
+        if File.file?("saves/#{filename}")
+            filename = filename.split('')
+            filename.pop(4)
+            filename = filename.join
+            exists = true
+        elsif File.file?("saves/#{filename}.csv")
+            exists = true
+        end
+        if !exists
+            puts "Couldn't find that file. (1) Try again (2) Exit"
+            response = gets.chomp
+            return if response == '2'
+        end
+    end
+    load_game(filename)
+end
+
+def load_game(filename)
+    content = CSV.open("saves/#{filename}.csv",
+        headers: true,
+        header_converters: :symbol
+    )
+    content.each do |line|
+        $goal_word = line[:goal_word]
+        $current_word = line[:current_word].split('')
+        $current_misses = line[:current_misses].to_i
+        $used_letters = line[:used_letters].split('')
+    end
+    game
+end
+
+def start_game
+    str = ''
+    str += 'Hello! welcome to hangman, this is a game where you have to guess a secret word before '
+    str += "\nthe little stickman gets hanged."
+    str += "\nEvery turn type a letter, if it is in the word it will be revealed, if not, a bodypart "
+    str += "\nof the stickman will be drawed."
+    str += "\n\nAlso you're able to save your game every turn, and reload it simply rerunning the program."
+    str += "\n\n(1) New Game   (2) Load Game"
+    str += "\nChoose an option (1 or 2): "
+    print str
+    election = gets.chomp
+    game if election == '1'
+    search_file if election == '2'
 end
 
 $goal_word = select_word()
 $current_word = Array.new($goal_word.length, '_')
 $current_misses = 0
 $used_letters = []
-game()
-
-
-# At the beginning display a select menu which contains load game, new game and some instructions
-# if the user selects load game, check inside the saves dir for any saved games
-# if there are any, the display them and ask for what file you want to load
+start_game
