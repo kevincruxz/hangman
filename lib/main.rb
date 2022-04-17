@@ -10,8 +10,27 @@ class Save
     end
 
     def serialize
-        print "How you want to name your save? : "
+        print 'How you want to name your save? '
         file_name = gets.chomp
+        while true
+            if file_name == 'exit' || file_name.include?('.')
+                print 'Invalid name, try another: '
+                file_name = gets.chomp
+            else
+                evaluate = Dir.entries('saves/.').select do |name|
+                    name = name.split('')
+                    name.pop(4)
+                    name.join == file_name
+                end
+                if evaluate.length.positive?
+                    print 'That file alredy exists. Try another name: '
+                    file_name = gets.chomp
+                else
+                    puts "\nGame saved successfully with the name #{file_name}."
+                    break
+                end
+            end
+        end
         File.open("saves/#{file_name}.csv", 'w') do |file|
             file.puts "goal_word,current_word,current_misses,used_letters\n#{@goal_word},#{@current_word.join},#{@current_misses},#{@used_letters.join}"
         end
@@ -84,6 +103,10 @@ def game
         letter = ask_letter(add)
         if letter == 'save'
             Save.new($goal_word, $current_word, $current_misses, $used_letters)
+            print 'Thank you for playing, would you like to play again? (y/yes): '
+            desicion = gets.chomp
+            mistake_desicion if desicion.downcase == 'y' || desicion.downcase == 'yes'
+            break
         else
             check_if_correct(letter)
         end
@@ -102,11 +125,15 @@ def game
 end
 
 def search_file
+    display_files
     exists = false
+    response = ''
     until exists
-        print 'Write the name of the file you want to load: '
+        print 'Write the name of the file you want to load (or type exit to return): '
         filename = gets.chomp
-        if File.file?("saves/#{filename}")
+        if filename == 'exit'
+            response = '2'
+        elsif File.file?("saves/#{filename}")
             filename = filename.split('')
             filename.pop(4)
             filename = filename.join
@@ -115,12 +142,27 @@ def search_file
             exists = true
         end
         if !exists
-            puts "Couldn't find that file. (1) Try again (2) Exit"
-            response = gets.chomp
-            return if response == '2'
+            if response != '2'
+                puts "Couldn't find that file. (1) Try again (2) Exit"
+                response = gets.chomp
+                until response == '1' || response == '2'
+                    print 'Wrong input. Select again (1 or 2): '
+                    response = gets.chomp
+                end
+            end
+            if response == '2'
+                mistake_desicion
+                return
+            end
         end
     end
     load_game(filename)
+end
+
+def display_files
+    puts "Current saved games: \n\n"
+    puts Dir.entries('saves/.') - %w[. ..]
+    puts "\n"
 end
 
 def load_game(filename)
@@ -140,16 +182,31 @@ end
 def start_game
     str = ''
     str += 'Hello! welcome to hangman, this is a game where you have to guess a secret word before '
-    str += "\nthe little stickman gets hanged."
+    str += 'the little stickman gets hanged.'
     str += "\nEvery turn type a letter, if it is in the word it will be revealed, if not, a bodypart "
-    str += "\nof the stickman will be drawed."
+    str += 'of the stickman will be drawed."'
     str += "\n\nAlso you're able to save your game every turn, and reload it simply rerunning the program."
     str += "\n\n(1) New Game   (2) Load Game"
     str += "\nChoose an option (1 or 2): "
+    select_option(str)
+end
+
+def mistake_desicion
+    str = "\nSelect an option:\n"
+    str += '(1) New Game   (2) Load Game'
+    str += "\nChoose an option (1 or 2): "
+    select_option(str)
+end
+
+def select_option(str)
+    election = ''
     print str
-    election = gets.chomp
-    game if election == '1'
-    search_file if election == '2'
+    until election.include?('1') || election.include?('2')
+        election = gets.chomp
+        game if election == '1'
+        search_file if election == '2'
+        print 'Wrong input. Try Again (1 or 2): ' if election != '1' && election != '2'
+    end
 end
 
 $goal_word = select_word()
